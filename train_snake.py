@@ -71,15 +71,11 @@ def train(silent=True):
             env,
             verbose=1,
             learning_rate=0.0001,
-            # 旧 10000 只装得下约 10 局，样本高度相关；放大到 10 万步更好打散
-            buffer_size=100_000,
-            # 大 buffer 下先攒一批数据再开始更新，避免起步阶段反复拟合少量样本
-            learning_starts=2_000,
-            batch_size=64,
+            # 【实测回退】曾试过 buffer 10万 / batch 64 / eps 0.02：
+            # 同样 500k 步、同样 room 观测，平均食物 47.0 -> 40.6，明显更差，故全部回退。
+            buffer_size=10_000,
             exploration_fraction=0.1,
-            # 旧 0.10：每 10 步就有 1 步随机（即使被掩码过滤），600 步的局几乎必死；
-            # 降到 0.02 只保留最低限度探索
-            exploration_final_eps=0.02,
+            exploration_final_eps=0.10,
             train_freq=4,
             target_update_interval=1000,
             gamma=0.99,
