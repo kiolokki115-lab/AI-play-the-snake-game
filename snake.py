@@ -56,8 +56,9 @@ class SnakeEnv(gym.Env):
         self.steps = 0
         self.win = False
         self.foods_eaten = 0
-        self._cached_escape_ratio = 0.0
         self._last_direction = (0, 1)
+        # 观测第 7 维现在是 room，开局必须是真实值（否则恒为 0，等于给策略喂了个坏特征）
+        self._cached_escape_ratio = self._compute_escape_ratio(*self.snake[0])
         return self._get_obs(), self._get_info()
 
     def _simulate_move(self, hx, hy, action):
@@ -320,7 +321,9 @@ class SnakeEnv(gym.Env):
         danger_right = is_danger(hx + 1, hy)
 
         length_ratio = len(self.snake) / (self.grid_size ** 2)
-        escape_ratio = float(self._cached_escape_ratio)
+        # 【v2 观测】第 7 维改成 room：0=被自己封死，1=还能走到所有剩余空格。
+        # 旧的绝对比率在长蛇时恒接近 0，策略无法区分“安全地用满剩余空间”和“真被堵死”。
+        room = self._relative_room(self._cached_escape_ratio)
 
         # 【修复】用新的方向自由度替换旧的直线隧道宽度
         dir_freedoms = self._compute_directional_freedom(hx, hy)
@@ -334,7 +337,7 @@ class SnakeEnv(gym.Env):
                 float(danger_left),        # 4: 左方危险
                 float(danger_right),       # 5: 右方危险
                 length_ratio,              # 6: 蛇身长度占比
-                escape_ratio,              # 7: 逃生空间比率
+                room,                      # 7: 相对逃生空间（v2，替换旧的绝对 escape_ratio）
                 dir_freedoms[0],           # 8: 上方可达自由度
                 dir_freedoms[1],           # 9: 下方可达自由度
                 dir_freedoms[2],           # 10: 左方可达自由度

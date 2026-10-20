@@ -8,7 +8,10 @@ from snake import SnakeEnv
 from mask_wrapper import ActionMaskWrapper
 
 # 自定义保存路径
-MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model"
+# v2：观测第 7 维已从“绝对 escape_ratio”改成“相对 room”，与旧模型不兼容，必须从头训练。
+MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model_v2"
+# 旧模型（绝对 escape_ratio 观测，约 55 食物水平），保留用于对比/演示：--watch-old
+OLD_MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model"
 LOG_DIR = r"C:\Users\35630\Desktop\AI玩游戏\snake_logs"
 
 
@@ -45,9 +48,9 @@ def train(silent=True):
     env = DummyVecEnv([lambda: masked_env])
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=2000,
+        save_freq=20000,
         save_path=LOG_DIR,
-        name_prefix="snake_rl",
+        name_prefix="snake_rl_v2",
         save_replay_buffer=False,
         verbose=1,
     )
@@ -66,14 +69,18 @@ def train(silent=True):
             env,
             verbose=1,
             learning_rate=0.0001,
-            buffer_size=10000,
-            # 调高最终探索率：从 0.05 提升到 0.10，保留更多探索空间
+            # 旧 10000 只装得下约 10 局，样本高度相关；放大到 10 万步更好打散
+            buffer_size=100_000,
+            # 大 buffer 下先攒一批数据再开始更新，避免起步阶段反复拟合少量样本
+            learning_starts=2_000,
+            batch_size=64,
             exploration_fraction=0.1,
-            exploration_final_eps=0.10,
+            # 旧 0.10：每 10 步就有 1 步随机（即使被掩码过滤），600 步的局几乎必死；
+            # 降到 0.02 只保留最低限度探索
+            exploration_final_eps=0.02,
             train_freq=4,
             target_update_interval=1000,
-            # 调高折扣因子：让 AI 更愿意为吃到食物而冒险
-            gamma=0.99
+            gamma=0.99,
         )
 
     mode_text = "🔇 静默模式" if silent else "👁️ 观摩模式"
@@ -95,7 +102,9 @@ def train(silent=True):
 
 def watch(model_path=MODEL_PATH):
     if not os.path.exists(f"{model_path}.zip"):
-        print(f"❌ 未找到模型文件 {model_path}.zip，请先运行训练！")
+        print(f"❌ 未找到模型文件 {model_path}.zip")
+        print("   → 先跑训练：python train_snake.py")
+        print("   → 只想看旧模型（v1 观测）：python train_snake.py --watch-old")
         return
 
     env = SnakeEnv(render_mode="human", grid_size=15)
@@ -142,6 +151,8 @@ if __name__ == "__main__":
 
     if "--watch" in args:
         watch()
+    elif "--watch-old" in args:
+        watch(OLD_MODEL_PATH)
     elif "--observe" in args:
         train(silent=False)
     else:
