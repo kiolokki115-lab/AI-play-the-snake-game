@@ -28,12 +28,15 @@ class SnakeEnv(gym.Env):
         milestone_every=25,
         milestone_bonus=100.0,
         obs_version=2,
+        max_steps=3000,
     ):
         super().__init__()
         self.grid_size = grid_size
         self.window_size = 512
         # 观测版本：2 = 第 7 维用相对空间 room（新）；1 = 用绝对 escape_ratio（旧模型专用）
         self.obs_version = obs_version
+        # 单局步数上限：蛇可能绕圈永远不死，没有上限会把训练/评估直接挂住
+        self.max_steps = max_steps
         # 通关（清屏）终局奖励：故意与单个食物的 +70 保持同一量级，
         # 这样值函数不会被顶到 1e7 那种无法学习的数值上。
         self.win_bonus = win_bonus
@@ -268,7 +271,9 @@ class SnakeEnv(gym.Env):
             if len(self.snake) > self.grid_size * 2 and room < 0.6:
                 reward -= 0.5
 
-        return self._get_obs(), reward, terminated, False, self._get_info()
+        # 步数上限：绕圈不死的局在这里被截断，避免训练/评估无限挂起
+        truncated = self.steps >= self.max_steps
+        return self._get_obs(), reward, terminated, truncated, self._get_info()
 
     def _get_info(self):
         """统一的 info：动作掩码 + 通关标记 + 展示用分数（与训练奖励无关）。"""
