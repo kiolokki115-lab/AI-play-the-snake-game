@@ -27,10 +27,13 @@ class SnakeEnv(gym.Env):
         food_reward_base=70.0,
         milestone_every=25,
         milestone_bonus=100.0,
+        obs_version=2,
     ):
         super().__init__()
         self.grid_size = grid_size
         self.window_size = 512
+        # 观测版本：2 = 第 7 维用相对空间 room（新）；1 = 用绝对 escape_ratio（旧模型专用）
+        self.obs_version = obs_version
         # 通关（清屏）终局奖励：故意与单个食物的 +70 保持同一量级，
         # 这样值函数不会被顶到 1e7 那种无法学习的数值上。
         self.win_bonus = win_bonus
@@ -57,8 +60,12 @@ class SnakeEnv(gym.Env):
         self.win = False
         self.foods_eaten = 0
         self._last_direction = (0, 1)
-        # 观测第 7 维现在是 room，开局必须是真实值（否则恒为 0，等于给策略喂了个坏特征）
-        self._cached_escape_ratio = self._compute_escape_ratio(*self.snake[0])
+        if self.obs_version == 1:
+            # v1 观测开局就是 0.0，为公平对比/演示旧模型保持原样
+            self._cached_escape_ratio = 0.0
+        else:
+            # v2 的 room 开局必须是真实值（否则恒为 0，等于给策略喂了个坏特征）
+            self._cached_escape_ratio = self._compute_escape_ratio(*self.snake[0])
         return self._get_obs(), self._get_info()
 
     def _simulate_move(self, hx, hy, action):
@@ -321,9 +328,13 @@ class SnakeEnv(gym.Env):
         danger_right = is_danger(hx + 1, hy)
 
         length_ratio = len(self.snake) / (self.grid_size ** 2)
-        # 【v2 观测】第 7 维改成 room：0=被自己封死，1=还能走到所有剩余空格。
-        # 旧的绝对比率在长蛇时恒接近 0，策略无法区分“安全地用满剩余空间”和“真被堵死”。
-        room = self._relative_room(self._cached_escape_ratio)
+        if self.obs_version == 1:
+            # v1：绝对逃生空间比率（旧模型就是吃这个特征训练的）
+            escape_feature = float(self._cached_escape_ratio)
+        else:
+            # v2：相对逃生空间 room，0=被自己封死，1=还能走到所有剩余空格。
+            # 旧的绝对比率在长蛇时恒接近 0，策略无法区分“用满剩余空间”和“真被堵死”。
+            escape_feature = self._relative_room(self._cached_escape_ratio)
 
         # 【修复】用新的方向自由度替换旧的直线隧道宽度
         dir_freedoms = self._compute_directional_freedom(hx, hy)
@@ -336,8 +347,8 @@ class SnakeEnv(gym.Env):
                 float(danger_down),        # 3: 下方危险
                 float(danger_left),        # 4: 左方危险
                 float(danger_right),       # 5: 右方危险
-                length_ratio,              # 6: 蛇身长度占比
-                room,                      # 7: 相对逃生空间（v2，替换旧的绝对 escape_ratio）
+                length_ratio,                 # 6: 蛇身长度占比
+                escape_feature,               # 7: 逃生空间（v1=绝对比率, v2=相对 room）
                 dir_freedoms[0],           # 8: 上方可达自由度
                 dir_freedoms[1],           # 9: 下方可达自由度
                 dir_freedoms[2],           # 10: 左方可达自由度

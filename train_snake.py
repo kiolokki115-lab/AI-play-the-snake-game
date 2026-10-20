@@ -100,14 +100,15 @@ def train(silent=True):
         env.close()
 
 
-def watch(model_path=MODEL_PATH):
+def watch(model_path=MODEL_PATH, obs_version=2):
     if not os.path.exists(f"{model_path}.zip"):
         print(f"❌ 未找到模型文件 {model_path}.zip")
         print("   → 先跑训练：python train_snake.py")
         print("   → 只想看旧模型（v1 观测）：python train_snake.py --watch-old")
         return
 
-    env = SnakeEnv(render_mode="human", grid_size=15)
+    # 环境观测必须和模型训练时一致，否则第 7 维含义错位，行为会莫名其妙
+    env = SnakeEnv(render_mode="human", grid_size=15, obs_version=obs_version)
     env = ActionMaskWrapper(env)  # 👈 推理时同样生效
     model = DQN.load(model_path, env=env)
 
@@ -152,7 +153,7 @@ if __name__ == "__main__":
     if "--watch" in args:
         watch()
     elif "--watch-old" in args:
-        watch(OLD_MODEL_PATH)
+        watch(OLD_MODEL_PATH, obs_version=1)
     elif "--observe" in args:
         train(silent=False)
     else:
