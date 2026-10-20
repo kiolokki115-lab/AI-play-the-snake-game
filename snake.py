@@ -2,7 +2,6 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import pygame
-import random
 import os
 from collections import deque
 
@@ -288,7 +287,11 @@ class SnakeEnv(gym.Env):
         }
 
     def _place_food(self):
-        """在空格中均匀随机放置食物；棋盘被填满时返回 None（调用方需先判胜）。"""
+        """在空格中均匀随机放置食物；棋盘被填满时返回 None（调用方需先判胜）。
+
+        用 self.np_random（gymnasium 的按 reset(seed=...) 播种）而不是全局 random，
+        否则同一个 seed 每次摆出来的食物都不一样，评估和配对比较全是噪声。
+        """
         body = set(map(tuple, self.snake))
         free_cells = [
             (x, y)
@@ -298,7 +301,8 @@ class SnakeEnv(gym.Env):
         ]
         if not free_cells:
             return None
-        return list(random.choice(free_cells))
+        idx = int(self.np_random.integers(len(free_cells)))
+        return list(free_cells[idx])
 
     def _get_obs(self):
         head = self.snake[0]
