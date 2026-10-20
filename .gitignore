@@ -1,0 +1,13 @@
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 训练产物：日志、断点、模型权重（体积大且每次训练都变）
+snake_logs/
+*.zip
+
+# 编辑器 / 系统文件
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
