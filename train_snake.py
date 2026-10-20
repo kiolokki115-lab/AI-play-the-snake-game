@@ -33,14 +33,15 @@ class RenderCallback(BaseCallback):
 
 def train(silent=True):
     os.makedirs(LOG_DIR, exist_ok=True)
-    
-    # 调试：打印实际保存路径，防止路径不对
-    print(f"📁 模型将保存至: {MODEL_PATH}.zip")
+
+    # 明确打印“训练的是哪个”，避免续训/覆盖搞混
+    print(f"📁 训练目标: {MODEL_PATH}.zip")
+    print(f"🧠 观测版本: v2 (room)")
 
     render_mode = None if silent else "human"
     # 通关（清屏）终局奖励默认 2000，可通过 SnakeEnv(win_bonus=...) 调整；
     # 别调成 1e7 这种量级，值函数学不动。
-    raw_env = SnakeEnv(render_mode=render_mode, grid_size=15)
+    raw_env = SnakeEnv(render_mode=render_mode, grid_size=15, obs_version=2)
     # 👈 关键：动作掩码硬约束，禁止 AI 选择立即致死动作
     masked_env = ActionMaskWrapper(raw_env)
 
@@ -60,10 +61,11 @@ def train(silent=True):
         callbacks.append(RenderCallback(raw_env, fps=30))
 
     if os.path.exists(f"{MODEL_PATH}.zip"):
-        print(f"🔄 加载已有模型继续训练...")
         model = DQN.load(MODEL_PATH, env=env)
+        print(f"🔄 已存在同名模型 → 继续训练，起点 {model.num_timesteps:,} 步")
+        print(f"   ⚠️ 训练结束会覆盖 {MODEL_PATH}.zip")
     else:
-        print("🆕 从零开始训练...")
+        print("🆕 不存在同名模型 → 从零开始训练")
         model = DQN(
             "MlpPolicy",
             env,
@@ -111,6 +113,7 @@ def watch(model_path=MODEL_PATH, obs_version=2):
     env = SnakeEnv(render_mode="human", grid_size=15, obs_version=obs_version)
     env = ActionMaskWrapper(env)  # 👈 推理时同样生效
     model = DQN.load(model_path, env=env)
+    print(f"🧠 模型: {model_path}.zip | 观测 v{obs_version} | 训练步数 {model.num_timesteps:,}")
 
     print("🎮 AI 演示中... | 关闭窗口或按 Ctrl+C 退出")
     obs, _ = env.reset()
