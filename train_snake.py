@@ -8,10 +8,11 @@ from snake import SnakeEnv
 from mask_wrapper import ActionMaskWrapper
 
 # 自定义保存路径
-# v2：观测第 7 维已从“绝对 escape_ratio”改成“相对 room”，与旧模型不兼容，必须从头训练。
-MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model_v2"
-# 旧模型（绝对 escape_ratio 观测，约 55 食物水平），保留用于对比/演示：--watch-old
-OLD_MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model"
+# 正式模型：v1 观测（绝对 escape_ratio）。修正评估器后的实测结果见下，
+# room 观测（v2）在 1.15M 步只有 46.4，明显不如 v1 的 58.2，故不作为默认。
+MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model"
+# 实验模型：room 观测（第 7 维改为相对空间），保留用于对比/演示：--watch-v2
+V2_MODEL_PATH = r"C:\Users\35630\Desktop\AI玩游戏\snake_dqn_model_v2"
 LOG_DIR = r"C:\Users\35630\Desktop\AI玩游戏\snake_logs"
 
 
@@ -36,12 +37,12 @@ def train(silent=True):
 
     # 明确打印“训练的是哪个”，避免续训/覆盖搞混
     print(f"📁 训练目标: {MODEL_PATH}.zip")
-    print(f"🧠 观测版本: v2 (room)")
+    print(f"🧠 观测版本: v1 (绝对 escape_ratio)")
 
     render_mode = None if silent else "human"
     # 通关（清屏）终局奖励默认 2000，可通过 SnakeEnv(win_bonus=...) 调整；
     # 别调成 1e7 这种量级，值函数学不动。
-    raw_env = SnakeEnv(render_mode=render_mode, grid_size=15, obs_version=2)
+    raw_env = SnakeEnv(render_mode=render_mode, grid_size=15, obs_version=1)
     # 👈 关键：动作掩码硬约束，禁止 AI 选择立即致死动作
     masked_env = ActionMaskWrapper(raw_env)
 
@@ -98,7 +99,7 @@ def train(silent=True):
         env.close()
 
 
-def watch(model_path=MODEL_PATH, obs_version=2):
+def watch(model_path=MODEL_PATH, obs_version=1):
     if not os.path.exists(f"{model_path}.zip"):
         print(f"❌ 未找到模型文件 {model_path}.zip")
         print("   → 先跑训练：python train_snake.py")
@@ -151,8 +152,8 @@ if __name__ == "__main__":
 
     if "--watch" in args:
         watch()
-    elif "--watch-old" in args:
-        watch(OLD_MODEL_PATH, obs_version=1)
+    elif "--watch-v2" in args or "--watch-old" in args:
+        watch(V2_MODEL_PATH, obs_version=2)
     elif "--observe" in args:
         train(silent=False)
     else:
