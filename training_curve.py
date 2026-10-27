@@ -57,6 +57,12 @@ def make_callback(csv_path=CURVE_CSV):
         def _on_training_start(self):
             os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
             is_new = not os.path.exists(self.csv_path) or os.path.getsize(self.csv_path) == 0
+            # 续训时接着之前的局数往下编号，否则 x 轴会出现 1..N 然后又从 1 开始
+            existing = 0
+            if not is_new:
+                with open(self.csv_path, newline="", encoding="utf-8") as fh:
+                    existing = max(0, sum(1 for _ in fh) - 1)
+            self._episode = existing
             self._fh = open(self.csv_path, "a", newline="", encoding="utf-8")
             self._writer = csv.writer(self._fh)
             if is_new:
