@@ -12,6 +12,9 @@ snake_logs/
 # 本机网络代理用的 CA 包（含 Windows 根证书，不入库）
 .git-ca/
 
+# 本机 SSH 私钥（绝不可入库）
+.ssh/
+
 # 编辑器 / 系统文件
 .vscode/
 .idea/
