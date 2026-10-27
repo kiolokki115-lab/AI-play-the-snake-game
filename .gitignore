@@ -6,6 +6,9 @@ __pycache__/
 snake_logs/
 *.zip
 
+# 导出用的离线包
+*.bundle
+
 # 编辑器 / 系统文件
 .vscode/
 .idea/
