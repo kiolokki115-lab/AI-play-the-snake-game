@@ -58,8 +58,13 @@ def train(silent=True):
     )
 
     callbacks = [checkpoint_callback]
+    # 训练曲线：每局结束把得分/食物数写进 snake_logs/curve.csv
+    from training_curve import CURVE_CSV, make_callback
+
+    callbacks.append(make_callback())
     if not silent:
         callbacks.append(RenderCallback(raw_env, fps=30))
+    print(f"📈 曲线数据: {CURVE_CSV}  →  跑完执行 python training_curve.py 出图")
 
     if os.path.exists(f"{MODEL_PATH}.zip"):
         model = DQN.load(MODEL_PATH, env=env)

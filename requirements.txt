@@ -3,3 +3,4 @@ gymnasium>=1.4
 pygame-ce>=2.5
 numpy
 torch
+pillow          # training_curve.py 画训练曲线用

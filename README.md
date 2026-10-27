@@ -11,8 +11,26 @@ python train_snake.py            # 训练（已有模型则继续训练）
 python train_snake.py --watch    # 看 AI 玩（默认最佳模型）
 ```
 
-## 实测成绩
+## 训练曲线
 
+训练时每局结束都会往 `snake_logs/curve.csv` 追加一行（步数、得分、食物数、是否通关、探索率），
+训练完直接出图：
+
+```bash
+python training_curve.py         # snake_logs/curve.csv → snake_logs/curve.png
+```
+
+也可以不重训，用历史检查点补一条曲线（对每个断点评测若干局，看「得分随训练步数」的变化）：
+
+```bash
+python training_curve.py --eval --points 8 --seeds 6
+# → snake_logs/curve_eval.csv / curve_eval.png
+```
+
+图上分两栏：上栏是**得分**（灰=每局原始值，蓝=滑动平均，橙=滑动最高），下栏是**食物数**同款统计。
+窗口大小可调：`--window 50`。
+
+## 实测成绩
 同一批 20 个随机种子（700–719），每局最多 3000 步：
 
 | 模型 | 观测 | 训练步数 | 平均食物 | 最低 | 最高 |
@@ -44,10 +62,11 @@ python train_snake.py --watch    # 看 AI 玩（默认最佳模型）
 snake.py                 环境（观测/奖励/通关判定/渲染）
 mask_wrapper.py          动作掩码 Wrapper
 train_snake.py           训练与演示入口
+training_curve.py        训练曲线：记录每局得分 + 画平均/最高曲线
 ablation_v2obs_oldhp.py  消融实验：room 观测 + 旧超参
 train_v2_oldhp_long.py   消融实验续训到 1.15M
 models/                  训练好的最佳模型（58.2）
-snake_logs/              训练日志与检查点（未入库，见 .gitignore）
+snake_logs/              训练日志、检查点、曲线图（未入库，见 .gitignore）
 ```
 
 ## 已知局限
